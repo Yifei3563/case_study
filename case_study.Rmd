@@ -1,0 +1,116 @@
+---
+title: "case_study"
+author: "Yifei Yu"
+date: "2024-10-09"
+output: html_document
+---
+
+Load key package.
+
+```{r}
+library(tidyverse)
+library(leaflet)
+library(p8105.datasets)
+data(nyc_airbnb)
+```
+
+
+
+## Brainstorm questions
+
+* Where are the max and min air bnb price?
+  * what are average prices?
+* Where are prices going up and down over time?
+* What's the relationship between number of reviews and average review?
+* Does room type affect availability?
+* What's the location of the unit?
+  * What areas are popular?
+  * Popularity = number of units? average price?
+* Are there repeat hosts?
+  * If so, what does that mean?
+  
+
+Let's start coding!
+
+```{r}
+max(pull(nyc_airbnb, price))
+min(pull(nyc_airbnb, price))
+mean(pull(nyc_airbnb, price))
+```
+
+```{r}
+summary(nyc_airbnb)
+```
+
+```{r}
+nyc_airbnb %>%
+  ggplot(aes(x = price, fill = neighbourhood_group)) +
+  geom_histogram() +
+  facet_grid(. ~ neighbourhood_group) +
+  scale_x_continuous(limits = c(0, 250))
+#(this gives a color-coded histogram showing the distribution of prices by borough; Manhattan seems to be more uniformly distributed and possibly bimodal; the others seem right-skewed)
+```
+
+```{r}
+ggplot(data = nyc_airbnb, aes(x = room_type, y = availability_365)) +
+  geom_violin()
+```
+
+```{r}
+nyc_airbnb |>
+  group_by(room_type) |>
+  summarize(mean_price = mean(price))
+```
+
+```{r}
+ggplot(data=nyc_airbnb, aes(x=number_of_reviews, y=review_scores_location, na.rm=TRUE)) + geom_point()
+```
+
+```{r}
+nyc_airbnb %>%
+  filter(calculated_host_listings_count > 5) %>%
+  distinct(host_id, host_name, calculated_host_listings_count) |> 
+  arrange(desc(calculated_host_listings_count))
+```
+
+  
+
+```{r}
+nyc_airbnb |> 
+  filter(
+    neighbourhood_group == "Manhattan",
+    price < 1000
+  ) |> 
+  ggplot(aes(x = lat, y = long, color = price)) +
+  geom_point(alpha = .1)
+```
+
+  
+```{r}
+nyc_airbnb |> 
+  filter(
+    neighbourhood_group == "Manhattan",
+    price < 1000) |> 
+  slice(1:10) |> 
+  leaflet() |> 
+  addTiles() |> 
+  addMarkers(~lat, ~long)
+```
+
+
+```{r}
+pal <- colorNumeric(
+  palette = "viridis",
+  domain = nyc_airbnb$review_scores_location) 
+
+nyc_airbnb |> 
+  filter(
+    neighbourhood_group == "Manhattan",
+    price < 1000) |> 
+  leaflet() |> 
+  addTiles() |> 
+  addCircleMarkers(~lat, ~long, color = ~ pal(review_scores_location), radius = 2)
+
+#addProviderTiles(provider$CartoDB.Positron) |> 
+```
+  
